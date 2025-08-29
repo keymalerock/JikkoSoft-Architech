@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  redis-node1:
+    image: redis:7-alpine
+    container_name: distributed-cache-redis-node1
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lfu
+    volumes:
+      - redis-node1-data:/data
+    networks:
+      - cache-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+
+  redis-node2:
+    image: redis:7-alpine
+    container_name: distributed-cache-redis-node2
+    ports:
+      - "6380:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lfu
+    volumes:
+      - redis-node2-data:/data
+    networks:
+      - cache-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+
+  # Opcional: Redis Commander para monitoreo visual
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: distributed-cache-redis-commander
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=node1:redis-node1:6379,node2:redis-node2:6379
+    networks:
+      - cache-network
+    depends_on:
+      - redis-node1
+      - redis-node2
+
+volumes:
+  redis-node1-data:
+    driver: local
+  redis-node2-data:
+    driver: local
+
+networks:
+  cache-network:
+    driver: bridge
